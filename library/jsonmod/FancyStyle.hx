@@ -45,8 +45,8 @@ class FancyStyle implements IEncodeStyle
 		return " : ";
 	}
 	
-	private var charTimesNCache : Array<String>;
-	private function charTimesN(n:Int) : String
+	var charTimesNCache : Array<String>;
+	function charTimesN(n:Int) : String
 	{
 		return n < charTimesNCache.length
 			? charTimesNCache[n]

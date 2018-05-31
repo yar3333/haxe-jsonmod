@@ -31,7 +31,6 @@ class TestClass
 		list = new Array();
         aDate = Date.now();
         timestamp = aDate.getTime();
-        //trace('timestamp:'+timestamp);
 		list.push("hello");
 	}
 	
@@ -50,15 +49,9 @@ class TestClass
 		return priv;
 	}
 }
-//{"priv":"this is private","pub":"this is public","_hxcls":"TestClass"}
 
 class TestParser extends haxe.unit.TestCase
 {
-	public function new()
-	{
-		super();
-	}
-	
 	public function testSimple()
 	{
 		var res = Json.parse("{key:'value'}");

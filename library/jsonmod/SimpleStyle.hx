@@ -38,5 +38,4 @@ class SimpleStyle implements IEncodeStyle
 	{
 		return ":";
 	}
-	
 }

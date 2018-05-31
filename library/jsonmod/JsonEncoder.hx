@@ -46,7 +46,7 @@ class JsonEncoder
 		return buffer.toString();
 	}
 
-	private function encodeObject(obj:Dynamic, style:IEncodeStyle, depth:Int) : String
+	function encodeObject(obj:Dynamic, style:IEncodeStyle, depth:Int) : String
 	{
 		if (references.indexOf(obj) >= 0) throw "JsonEncoder: recursive reference detected.";
 		
@@ -77,7 +77,7 @@ class JsonEncoder
 		return buffer.toString();
 	}
 	
-	private function encodeMap(obj:Map<Dynamic, Dynamic>, style:IEncodeStyle, depth:Int) : String
+	function encodeMap(obj:Map<Dynamic, Dynamic>, style:IEncodeStyle, depth:Int) : String
 	{
 		var buffer = new StringBuf();
 		
@@ -98,7 +98,7 @@ class JsonEncoder
 		return buffer.toString();
 	}
 	
-	private function encodeIterable(obj:Iterable<Dynamic>, style:IEncodeStyle, depth:Int) : String
+	function encodeIterable(obj:Iterable<Dynamic>, style:IEncodeStyle, depth:Int) : String
 	{
 		var buffer = new StringBuf();
 		
@@ -118,7 +118,7 @@ class JsonEncoder
 		return buffer.toString();
 	}
 	
-	private function encodeValue(value:Dynamic, style:IEncodeStyle, depth:Int) : String
+	function encodeValue(value:Dynamic, style:IEncodeStyle, depth:Int) : String
 	{
 		if (Std.is(value, Int) || Std.is(value, Float))
 		{

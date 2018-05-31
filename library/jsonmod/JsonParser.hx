@@ -7,33 +7,24 @@ using StringTools;
 
 class JsonParser
 {
-	var pos : Int;
+	var floatRegex = ~/^-?[0-9]*\.[0-9]+$/;
+	var intRegex = ~/^-?[0-9]+$/;
+	
+	var pos = 0;
+	var lastSymbolQuoted = false;
+	var currentLine = 1;
+
 	var json : String;
-	var lastSymbolQuoted : Bool;//true if the last symbol was in quotes.
-    var fileName = "JSON Data";
-	var currentLine : Int;
-	var cache : Array<Dynamic>;
-	var floatRegex : EReg;
-	var intRegex : EReg;
 
 	public function new(json:String)
     {
 		this.json = json;
-		
-		currentLine = 1;
-        lastSymbolQuoted = false;
-		pos = 0;
-		floatRegex = ~/^-?[0-9]*\.[0-9]+$/;
-		intRegex = ~/^-?[0-9]+$/;
-		
-		cache = new Array();
     }
 
     public function doParse() : Dynamic
     {
     	try
 		{
-			//determine if objector array
 			return switch (getNextSymbol())
 			{
 				case '{': doObject();
@@ -43,7 +34,7 @@ class JsonParser
 		}
 		catch (e:String)
 		{
-			throw fileName + " on line " + currentLine + ": " + e;
+			throw "JSON Data on line " + currentLine + ": " + e;
 		}
 	}
     
@@ -54,36 +45,25 @@ class JsonParser
 		return destObj;
 	}
 
-	private function doObject() : Dynamic
+	function doObject() : Dynamic
 	{
 		var o : Dynamic = {};
-		var val : Dynamic ='';
-		var key : String;
-		var isClassOb = false;
-		
-		cache.push(o);
+		var val : Dynamic;
 		
 		while(pos < json.length)
 		{
-			key = getNextSymbol();
+			var key = getNextSymbol();
 			if (key == "," && !lastSymbolQuoted) continue;
-			if (key == "}" && !lastSymbolQuoted)
-			{
-				//if (isClassOb && #if flash9 try o.TJ_unserialize != null catch (e:Dynamic) false #elseif (cs || java) Reflect.hasField(o, "TJ_unserialize") #else o.TJ_unserialize != null #end)
-				//{
-				//	o.TJ_unserialize();
-				//}
-				return o;
-			}
-
+			if (key == "}" && !lastSymbolQuoted) return o;
+			
 			var seperator = getNextSymbol();
 			if (seperator != ":")
 			{
 				throw "Expected ':' but got '"+seperator+"' instead.";
 			}
-
+			
 			var v = getNextSymbol();
-
+			
 			if (key == '_hxcls')
 			{
 				if (v.startsWith('Date@'))
@@ -92,13 +72,10 @@ class JsonParser
 				}
 				else
 				{
-					var cls =Type.resolveClass(v);
+					var cls = Type.resolveClass(v);
 					if (cls == null) throw "Invalid class name - " + v;
 					o = Type.createEmptyInstance(cls);
 				}
-				cache.pop();
-				cache.push(o);
-				isClassOb = true;
 				continue;
 			}
 			
@@ -119,7 +96,7 @@ class JsonParser
 		throw "Unexpected end of file. Expected '}'";
 	}
 
-	private function doArray() : Dynamic
+	function doArray() : Dynamic
 	{
 		var a = new Array<Dynamic>();
 		var val : Dynamic;
@@ -151,7 +128,7 @@ class JsonParser
 		throw "Unexpected end of file. Expected ']'";
 	}
 
-	private function convertSymbolToProperType(symbol) : Dynamic
+	function convertSymbolToProperType(symbol) : Dynamic
 	{
 		if (lastSymbolQuoted)
 		{
@@ -181,24 +158,24 @@ class JsonParser
 		return symbol;
 	}
 	
-	private function looksLikeFloat(s:String) : Bool
+	function looksLikeFloat(s:String) : Bool
 	{
 		if (floatRegex.match(s)) return true;
-
+		
 		if (intRegex.match(s))
 		{
 			var f = Std.parseFloat(s);
-			if (f > 2147483647.0 || f < -2147483648) return true;
+			if (f > 2147483647 || f < -2147483648) return true;
 		}
 		return false;
 	}
 
-	private function looksLikeInt(s:String) : Bool
+	function looksLikeInt(s:String) : Bool
 	{
 		return intRegex.match(s);
 	}
 
-	private function getNextSymbol()
+	function getNextSymbol() : String
 	{
 		lastSymbolQuoted = false;
 		
@@ -210,7 +187,7 @@ class JsonParser
 		var inSymbol = false;
 		var inLineComment = false;
 		var inBlockComment = false;
-
+		
 		while(pos < json.length)
 		{
 			c = json.charAt(pos++);
@@ -224,7 +201,7 @@ class JsonParser
 				}
 				continue;
 			}
-
+			
 			if (inBlockComment)
 			{
 				if (c == "*" && json.charAt(pos) == "/")
@@ -234,7 +211,7 @@ class JsonParser
 				}
 				continue;
 			}
-
+			
 			if (inQuote)
 			{
 				if (inEscape)
@@ -270,11 +247,11 @@ class JsonParser
 						symbol += "/";
 						continue;
 					}
-
+					
 					if (c == "u")
 					{
                         var hexValue = 0;
-
+						
                         for (i in 0...4)
                         {
                             if (pos >= json.length) throw "Unfinished UTF8 character";
@@ -341,7 +318,7 @@ class JsonParser
 			if (inSymbol)
 			{
 				if (c == ' ' || c == "\n" || c == "\r" || c == "\t" || c == ',' || c == ":" || c == "}" || c == "]")
-				{//end of symbol, return it
+				{
 					pos--;
 					return symbol;
 				}
@@ -357,7 +334,7 @@ class JsonParser
 				{
 					continue;
 				}
-
+				
 				if (c == "{" || c == "}" || c == "[" || c == "]" || c == "," || c == ":")
 				{
 					return c;
@@ -474,5 +451,4 @@ class JsonParser
 		
 		return r;
 	}
-	
 }
