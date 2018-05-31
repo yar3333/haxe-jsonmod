@@ -1,5 +1,8 @@
 package jsonmod;
 
+import haxe.rtti.Meta;
+import haxe.rtti.Rtti;
+import haxe.rtti.CType;
 using StringTools;
 
 class JsonParser
@@ -7,25 +10,22 @@ class JsonParser
 	var pos : Int;
 	var json : String;
 	var lastSymbolQuoted : Bool;//true if the last symbol was in quotes.
-    var fileName : String;
+    var fileName = "JSON Data";
 	var currentLine : Int;
 	var cache : Array<Dynamic>;
 	var floatRegex : EReg;
 	var intRegex : EReg;
-	var strProcessor : String->Dynamic;
 
-	public function new(vjson:String, vfileName="JSON Data", ?stringProcessor:String->Dynamic)
+	public function new(json:String)
     {
-		json = vjson;
-		fileName = vfileName;
+		this.json = json;
+		
 		currentLine = 1;
         lastSymbolQuoted = false;
 		pos = 0;
 		floatRegex = ~/^-?[0-9]*\.[0-9]+$/;
 		intRegex = ~/^-?[0-9]+$/;
-		strProcessor = stringProcessor == null
-						? defaultStringProcessor
-						: stringProcessor;
+		
 		cache = new Array();
     }
 
@@ -46,23 +46,33 @@ class JsonParser
 			throw fileName + " on line " + currentLine + ": " + e;
 		}
 	}
+    
+	public function doParseTyped<T:{}>(destObj:T) : T
+	{
+		var untypedSomething = doParse();
+		mapObject(untypedSomething, destObj);
+		return destObj;
+	}
 
 	private function doObject() : Dynamic
 	{
-		var o : Dynamic = { };
+		var o : Dynamic = {};
 		var val : Dynamic ='';
 		var key : String;
 		var isClassOb = false;
+		
 		cache.push(o);
+		
 		while(pos < json.length)
 		{
-			key=getNextSymbol();
-			if (key == "," && !lastSymbolQuoted)continue;
-			if (key == "}" && !lastSymbolQuoted){
-				//end of the object. Run the TJ_unserialize function if there is one
-				if (isClassOb && #if flash9 try o.TJ_unserialize != null catch(e:Dynamic) false #elseif (cs || java) Reflect.hasField(o, "TJ_unserialize") #else o.TJ_unserialize != null #end) {
-					o.TJ_unserialize();
-				}
+			key = getNextSymbol();
+			if (key == "," && !lastSymbolQuoted) continue;
+			if (key == "}" && !lastSymbolQuoted)
+			{
+				//if (isClassOb && #if flash9 try o.TJ_unserialize != null catch (e:Dynamic) false #elseif (cs || java) Reflect.hasField(o, "TJ_unserialize") #else o.TJ_unserialize != null #end)
+				//{
+				//	o.TJ_unserialize();
+				//}
 				return o;
 			}
 
@@ -145,14 +155,7 @@ class JsonParser
 	{
 		if (lastSymbolQuoted)
 		{
-			//value was in quotes, so it's a string.
-			//look for reference prefix, return cached reference if it is
-			if (StringTools.startsWith(symbol, Json.OBJECT_REFERENCE_PREFIX))
-			{
-				var idx : Int = Std.parseInt(symbol.substr(Json.OBJECT_REFERENCE_PREFIX.length));
-				return cache[idx];
-			}
-			return symbol;//just a normal string so return it
+			return symbol;
 		}
 		if (looksLikeFloat(symbol))
 		{
@@ -197,7 +200,8 @@ class JsonParser
 
 	private function getNextSymbol()
 	{
-		lastSymbolQuoted=false;
+		lastSymbolQuoted = false;
+		
 		var c = '';
 		var inQuote = false;
 		var quoteType = "";
@@ -273,8 +277,8 @@ class JsonParser
 
                         for (i in 0...4)
                         {
-                            if (pos >= json.length)
-                              throw "Unfinished UTF8 character";
+                            if (pos >= json.length) throw "Unfinished UTF8 character";
+							
 			                var nc = json.charCodeAt(pos++);
                             hexValue = hexValue << 4;
                             if (nc >= 48 && nc <= 57)// 0..9
@@ -307,6 +311,7 @@ class JsonParser
 						return symbol;
 					}
 					symbol += c;
+					
 					continue;
 				}
 			}
@@ -342,7 +347,7 @@ class JsonParser
 				}
 				else
 				{
-					symbol+=c;
+					symbol += c;
 					continue;
 				}
 			}
@@ -367,7 +372,7 @@ class JsonParser
 				}
 				else
 				{
-					inSymbol=true;
+					inSymbol = true;
 					symbol = c;
 					continue;
 				}
@@ -382,8 +387,92 @@ class JsonParser
 		return symbol;
 	}
 	
-	private function defaultStringProcessor(str:String) : Dynamic
+	function mapObject(src:Dynamic, dest:{}) : Dynamic
 	{
-		return str;
+		var klass = Type.getClass(dest);
+		var rtti = Rtti.getRtti(klass);
+		
+		switch (Type.typeof(src))
+		{
+			case Type.ValueType.TObject:
+				for (fieldName in getInstanceFieldsToMap(dest))
+				{
+					if (Reflect.hasField(src, fieldName))
+					{
+						var value:Dynamic = Reflect.field(src, fieldName);
+						
+						var rttiField = rtti.fields.filter(function(x) return x.name == fieldName).first();
+						
+						switch (rttiField.type)
+						{
+							case CType.CClass(name, params):
+								if (name == "Array")
+								{
+									Reflect.setField(dest, fieldName, mapArray(value, params));
+								}
+								else
+								if (name == "String")
+								{
+									Reflect.setField(dest, fieldName, value);
+								}
+								else
+								if (name == "Date")
+								{
+									Reflect.setField(dest, fieldName, Date.fromTime(value));
+								}
+								else
+								{
+									var subKlass = Type.resolveClass(name);
+									Reflect.setField(dest, fieldName, mapObject(value, Type.createInstance(subKlass, [])));
+								}
+								
+							default:
+								Reflect.setField(dest, fieldName, Reflect.field(src, fieldName));
+						}
+					}
+				}
+				
+			default:
+				throw "Parsed value must be object.";
+		}
+		
+		return dest;
 	}
+	
+	function mapArray(src:Array<Dynamic>, params:List<CType>) : Array<Dynamic>
+	{
+		if (params.length != 1) return src;
+		
+		var subType = params.first();
+		switch (subType)
+		{
+			case CType.CClass(name, params):
+				if (name == "String") return src;
+				if (name == "Array") return src.map(function(item) return mapArray(item, params));
+				var klass = Type.resolveClass(name);
+				return src.map(function(item) return mapObject(item, Type.createInstance(klass, [])));
+				
+			default:
+				return src;
+		}
+	}
+	
+	function getInstanceFieldsToMap(obj:{}) : Array<String>
+	{
+		var klass = Type.getClass(obj);
+		
+		var r = Type.getInstanceFields(klass);
+		
+		var fieldsMeta = Meta.getFields(klass);
+		for (fieldName in Reflect.fields(fieldsMeta))
+		{
+			if (Reflect.hasField(Reflect.field(fieldsMeta, fieldName), "jsonIgnore"))
+			{
+				r.remove(fieldName);
+			}
+		}
+		
+		return r;
+	}
+	
 }

@@ -1,34 +1,34 @@
 import jsonmod.Json;
-import jsonmod.EncodeStyle;
 import sys.io.File;
 
+@:rtti
 class ChildClass
 {
 	public var myvar : String;
-	public var parent : TestClass;
 	
-	public function new(parent:TestClass)
+	public function new()
 	{
-		this.parent = parent;
 		myvar = "this works";
 	}
 }
 
+@:rtti
 class TestClass
 {
-	private var priv = 'this is private';
+	var priv = 'this is private';
+	
 	public var pub = 'this is public';
 	public var subObj : ChildClass;
-	public var list : List<String>;
+	public var list : Array<String>;
+	@jsonIgnore
 	public var dontSerialize = 'this wont be serialized';
-    public var unserialized = false;
     public var aDate : Date;
     public var timestamp : Float;
 
 	public function new()
 	{
-		subObj = new ChildClass(this);
-		list = new List();
+		subObj = new ChildClass();
+		list = new Array();
         aDate = Date.now();
         timestamp = aDate.getTime();
         //trace('timestamp:'+timestamp);
@@ -49,16 +49,6 @@ class TestClass
 	{
 		return priv;
 	}
-	
-	public function TJ_noEncode() : Array<String>
-	{
-		return ['dontSerialize'];
-	}
-
-    public function TJ_unserialize()
-    {
-        unserialized = true;
-    }
 }
 //{"priv":"this is private","pub":"this is public","_hxcls":"TestClass"}
 
@@ -106,7 +96,7 @@ class TestParser extends haxe.unit.TestCase
 			{
 				keyWithNoString:
 				{
-					\'keyWithsinglequote\' : "value with a
+					\'keyWithSingleQuote\' : "value with a
 					newline in the middle!"
 					, k2:300
 					"key with spaces": "key 3"
@@ -133,7 +123,7 @@ class TestParser extends haxe.unit.TestCase
 		var o = Json.parse(data);
 		//trace(Std.string(o));
 		assertEquals("value with a
-					newline in the middle!", o.keyWithNoString.keyWithsinglequote);
+					newline in the middle!", o.keyWithNoString.keyWithSingleQuote);
 		assertEquals(300, Reflect.field(o.keyWithNoString,'k2'));
 		assertEquals("key 3", Reflect.field(o.keyWithNoString,'key with spaces'));
 		assertEquals(-3.2, o.arrayWithNoCommaBeforeIt[1]);
@@ -163,15 +153,15 @@ class TestParser extends haxe.unit.TestCase
 	
 	public function testEncodeList()
 	{
-		var list = new List<Dynamic>();
-		list.add("test");
-		list.add({ key:'myObject', intval:31 });
-		list.add([1, 2, 3, 4]);
-		var sublist = new List<Dynamic>();
-		sublist.add(1);
-		sublist.add("two");
-		sublist.add(new List<Dynamic>());
-		list.add(sublist);
+		var list = new Array<Dynamic>();
+		list.push("test");
+		list.push({ key:'myObject', intval:31 });
+		list.push([1, 2, 3, 4]);
+		var sublist = new Array<Dynamic>();
+		sublist.push(1);
+		sublist.push("two");
+		sublist.push(new Array<Dynamic>());
+		list.push(sublist);
 		assertEquals('["test",{"key":"myObject","intval":31},[1,2,3,4],[1,"two",[]]]', Json.encode(list));
 	}
 	
@@ -202,7 +192,7 @@ class TestParser extends haxe.unit.TestCase
 		assertEquals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
 
 		//test fancy style
-		var jsonString = Json.encode(origObj, EncodeStyle.Fancy);
+		var jsonString = Json.encode(origObj, JsonEncodeStyle.Fancy);
 		var generatedObj = Json.parse(jsonString);
 		assertEquals('a',Reflect.field(generatedObj,'1'));
 		assertEquals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
@@ -283,12 +273,12 @@ class TestParser extends haxe.unit.TestCase
 
 	public function testNull()
 	{
-		var obj= { "nullVal":null ,'non-null':'null',"array":[null, 1]};
-		var data : String = Json.encode(obj);
+		var obj = { "nullVal":null ,'non-null':'null',"array":[null, 1]};
+		var data = Json.encode(obj);
 		assertEquals('{"non-null":"null","nullVal":null,"array":[null,1]}', data);
 		
-		var obj2= Json.parse('{"nullVal":null ,"non-null":"null","array":[null,1]}');
-		var data2 : String = Json.encode(obj2);
+		var obj2 = Json.parse('{"nullVal":null ,"non-null":"null","array":[null,1]}');
+		var data2 = Json.encode(obj2);
 		assertEquals('{"non-null":"null","nullVal":null,"array":[null,1]}', data2);
 	}
 
@@ -301,7 +291,9 @@ class TestParser extends haxe.unit.TestCase
 		var json = Json.encode(obj);
 		// trace(json);
 		//unserialize class object
-		var ob2 : TestClass = Json.parse(json);
+		var t = new TestClass();
+		t.dontSerialize = null;
+		var ob2 = Json.parseTyped(json, t);
 		
 		assertEquals("yep", ob2.test());
 		assertEquals(obj.getPriv(), ob2.getPriv());
@@ -310,7 +302,6 @@ class TestParser extends haxe.unit.TestCase
 		obj.setPriv('newString');
 		assertFalse(obj.getPriv() == ob2.getPriv());
 		assertEquals("this works", obj.subObj.myvar);
-		assertEquals(ob2, ob2.subObj.parent);
 
         //test Date object serialization/unserialization
         assertTrue(ob2.aDate != null);
@@ -318,29 +309,8 @@ class TestParser extends haxe.unit.TestCase
         assertEquals(ob2.timestamp, obj.timestamp);
         assertEquals(ob2.aDate.getTime(), obj.timestamp);
         
-        //confirm that TJ_unserialize was called
-        assertEquals(true, ob2.unserialized);
-
         //test TJ_noEncode
         assertEquals("this wont be serialized", obj.dontSerialize);
         assertEquals(null, ob2.dontSerialize);
-	}
-
-	public function testObjectReferences()
-	{
-		var arr : Array<TestClass> = new Array();
-		var ob1 = new TestClass();
-		arr.push(new TestClass());
-		arr.push(new TestClass());
-		arr.push(ob1);
-		arr.push(new TestClass());
-
-		arr.push(ob1);
-		arr.push(new TestClass());
-
-		var json = Json.encode(arr);
-		// trace(json);
-		var res = Json.parse(json);
-		assertEquals(res[4], res[2]);
 	}
 }

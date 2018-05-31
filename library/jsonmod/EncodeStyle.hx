@@ -4,6 +4,5 @@ enum EncodeStyle
 {
 	Simple;
 	Fancy;
-	
-	Custom;
+	Custom(style:IEncodeStyle);
 }
