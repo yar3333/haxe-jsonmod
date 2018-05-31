@@ -1,43 +1,60 @@
 jsonmod
 =======
 
-JSON parser and encoder for Haxe. Based on TJSON haxelib.
+JSON parser and encoder for Haxe. Based on TJSON library (by Jordan CM Wambaugh).
 
-1. Support single-quotes for strings
-2. Keys don't have to be wrapped in quotes
-3. C style comments support - `/*comment*/`
-4. C++ style comments support - `//comment`
-5. Dangling commas don't kill it (commas  are even optional)
+Supported JSON format:
 
-Using
------
+ 1. Single-quotes for strings.
+ 2. Identifiers not wrapped in quotes.
+ 3. C style comments support - `/*comment*/`.
+ 4. C++ style comments support - `//comment`.
+ 5. Dangling commas don't kill it (commas are even optional).
+
+
+Features:
+
+ * Typed parsing using `RTTI` (support classes, `Array` and `Date`).
+ * `@jsonIgnore` field meta.
+ * `Date` serialized/deserialized as Float (`Date.getTime()`/`Date.fromTime()`).
+ * Recursive self-references not supported (exception throws on encoding).
+
+
+Basic using
+-----------
 
 ```haxe
 import jsonmod.Json;
 ...
-// parse
-var jsonData = "{ key:'value' }";
-var object = Json.parse(jsonData);
+// parse string to object
+var data = "{ key:'value' }";
+var object = Json.parse(data);
 
-// encode to string
-var objectToEncode =
-{
-	myKey:'myValue'
-};
-var json = TJSON.encode(objectToEncode);  // {"myKey":"myValue"}
+// encode object to string
+var json = Json.encode(object);
 ```
 
-License
-=======
 
-Copyright (c) 2012, Jordan CM Wambaugh
-All rights reserved.
+Advanced using
+--------------
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+```haxe
+@:rtti // need for Json.parseTyped() to detect field types
+class MyClass
+{
+	@jsonIgnore
+	var a = 1;
+	
+	public var b = 2;
+	
+	public function new() {}
+}
 
-Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+var objToEncode = new MyClass();
+objToEncode.b = 10;
+var str = Json.encode(objToEncode); // "{b:10}"
 
-Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// parse with classes support
+var parsedObject = Json.parseTyped(str, new MyClass()); // MyClass { a:1, b:10 }
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+```
