@@ -21,15 +21,17 @@ class JsonParser
 		this.json = json;
     }
 
-    public function doParse() : Dynamic
+    public function parse(?klass:Class<Dynamic>) : Dynamic
     {
-    	try
+    	var type = klass != null ? CType.CClass(Type.getClassName(klass), new List<CType>()) : null;
+		
+		try
 		{
-			return switch (getNextSymbol())
+			switch (getNextSymbol())
 			{
-				case '{': doObject();
-				case '[': doArray();
-				case s: convertSymbolToProperType(s);
+				case '{': return parseObject(type);
+				case '[': return parseArray(type);
+				case s: return convertSymbolToProperType(s, type);
 			}
 		}
 		catch (e:String)
@@ -38,16 +40,30 @@ class JsonParser
 		}
 	}
     
-	public function doParseTyped<T:{}>(destObj:T) : T
+	function parseObject(type:CType) : Dynamic
 	{
-		var untypedSomething = doParse();
-		mapObject(untypedSomething, destObj);
-		return destObj;
-	}
-
-	function doObject() : Dynamic
-	{
-		var o : Dynamic = {};
+		var o : Dynamic;
+		var rtti : Classdef = null;
+		
+		if (type != null)
+		{
+			switch (type)
+			{
+				case CType.CClass(name, params):
+					var klass = Type.resolveClass(name);
+					if (klass == null) throw "Can't resolve class '" + name + "'.";
+					o = Type.createEmptyInstance(klass);
+					rtti = Rtti.getRtti(klass);
+					
+				default:
+					throw "Expected " + type + ", but object found.";
+			}
+		}
+		else
+		{
+			o = {};
+		}
+		
 		var val : Dynamic;
 		
 		while(pos < json.length)
@@ -56,49 +72,48 @@ class JsonParser
 			if (key == "," && !lastSymbolQuoted) continue;
 			if (key == "}" && !lastSymbolQuoted) return o;
 			
-			var seperator = getNextSymbol();
-			if (seperator != ":")
+			var separator = getNextSymbol();
+			if (separator != ":")
 			{
-				throw "Expected ':' but got '"+seperator+"' instead.";
+				throw "Expected ':' but got '" + separator + "' instead.";
 			}
 			
 			var v = getNextSymbol();
 			
-			if (key == '_hxcls')
-			{
-				if (v.startsWith('Date@'))
-				{
-					o = Date.fromTime(Std.parseInt(v.substr(5)));
-				}
-				else
-				{
-					var cls = Type.resolveClass(v);
-					if (cls == null) throw "Invalid class name - " + v;
-					o = Type.createEmptyInstance(cls);
-				}
-				continue;
-			}
-			
 			if (v == "{" && !lastSymbolQuoted)
 			{
-				val = doObject();
+				val = parseObject(getFieldType(rtti, key));
 			}
 			else if (v == "[" && !lastSymbolQuoted)
 			{
-				val = doArray();
+				val = parseArray(getFieldType(rtti, key));
 			}
 			else
 			{
-				val = convertSymbolToProperType(v);
+				val = convertSymbolToProperType(v, getFieldType(rtti, key));
 			}
 			Reflect.setField(o, key, val);
 		}
 		throw "Unexpected end of file. Expected '}'";
 	}
 
-	function doArray() : Dynamic
+	function parseArray(type:CType) : Dynamic
 	{
 		var a = new Array<Dynamic>();
+		var itemType: CType = null;
+		
+		if (type != null)
+		{
+			switch (type)
+			{
+				case CType.CClass("Array", params):
+					itemType = params.first();
+					
+				default:
+					throw "Expected " + type + ", but array found.";
+			}
+		}
+		
 		var val : Dynamic;
 		while (pos < json.length)
 		{
@@ -113,22 +128,22 @@ class JsonParser
 			}
 			else if (val == "{" && !lastSymbolQuoted)
 			{
-				val = doObject();
+				val = parseObject(itemType);
 			}
 			else if (val == "[" && !lastSymbolQuoted)
 			{
-				val = doArray();
+				val = parseArray(itemType);
 			}
 			else
 			{
-				val = convertSymbolToProperType(val);
+				val = convertSymbolToProperType(val, itemType);
 			}
 			a.push(val);
 		}
 		throw "Unexpected end of file. Expected ']'";
 	}
 
-	function convertSymbolToProperType(symbol) : Dynamic
+	function convertSymbolToProperType(symbol:String, type:CType) : Dynamic
 	{
 		if (lastSymbolQuoted)
 		{
@@ -136,11 +151,23 @@ class JsonParser
 		}
 		if (looksLikeFloat(symbol))
 		{
-			return Std.parseFloat(symbol);
+			var f = Std.parseFloat(symbol);
+			if (type == null) return f;
+			switch (type)
+			{
+				case CType.CClass("Date", _): return Date.fromTime(f);
+				default: return f;
+			}
 		}
 		if (looksLikeInt(symbol))
 		{
-			return Std.parseInt(symbol);
+			var n = Std.parseInt(symbol);
+			if (type == null) return n;
+			switch (type)
+			{
+				case CType.CClass("Date", _): return Date.fromTime(n);
+				default: return n;
+			}
 		}
 		if (symbol.toLowerCase() == "true")
 		{
@@ -364,91 +391,13 @@ class JsonParser
 		return symbol;
 	}
 	
-	function mapObject(src:Dynamic, dest:{}) : Dynamic
+	function getFieldType(rtti:Classdef, field:String) : CType
 	{
-		var klass = Type.getClass(dest);
-		var rtti = Rtti.getRtti(klass);
-		
-		switch (Type.typeof(src))
+		if (rtti == null) return null;
+		for (x in rtti.fields)
 		{
-			case Type.ValueType.TObject:
-				for (fieldName in getInstanceFieldsToMap(dest))
-				{
-					if (Reflect.hasField(src, fieldName))
-					{
-						var value:Dynamic = Reflect.field(src, fieldName);
-						
-						var rttiField = rtti.fields.filter(function(x) return x.name == fieldName).first();
-						
-						switch (rttiField.type)
-						{
-							case CType.CClass(name, params):
-								if (name == "Array")
-								{
-									Reflect.setField(dest, fieldName, mapArray(value, params));
-								}
-								else
-								if (name == "String")
-								{
-									Reflect.setField(dest, fieldName, value);
-								}
-								else
-								if (name == "Date")
-								{
-									Reflect.setField(dest, fieldName, Date.fromTime(value));
-								}
-								else
-								{
-									var subKlass = Type.resolveClass(name);
-									Reflect.setField(dest, fieldName, mapObject(value, Type.createInstance(subKlass, [])));
-								}
-								
-							default:
-								Reflect.setField(dest, fieldName, Reflect.field(src, fieldName));
-						}
-					}
-				}
-				
-			default:
-				throw "Parsed value must be object.";
+			if (x.name == field) return x.type;
 		}
-		
-		return dest;
-	}
-	
-	function mapArray(src:Array<Dynamic>, params:List<CType>) : Array<Dynamic>
-	{
-		if (params.length != 1) return src;
-		
-		var subType = params.first();
-		switch (subType)
-		{
-			case CType.CClass(name, params):
-				if (name == "String") return src;
-				if (name == "Array") return src.map(function(item) return mapArray(item, params));
-				var klass = Type.resolveClass(name);
-				return src.map(function(item) return mapObject(item, Type.createInstance(klass, [])));
-				
-			default:
-				return src;
-		}
-	}
-	
-	function getInstanceFieldsToMap(obj:{}) : Array<String>
-	{
-		var klass = Type.getClass(obj);
-		
-		var r = Type.getInstanceFields(klass);
-		
-		var fieldsMeta = Meta.getFields(klass);
-		for (fieldName in Reflect.fields(fieldsMeta))
-		{
-			if (Reflect.hasField(Reflect.field(fieldsMeta, fieldName), "jsonIgnore"))
-			{
-				r.remove(fieldName);
-			}
-		}
-		
-		return r;
+		return null;
 	}
 }

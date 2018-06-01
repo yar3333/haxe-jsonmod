@@ -7,7 +7,7 @@ class FancyStyle implements IEncodeStyle
 	public function new(tab = "    ")
 	{
 		this.tab = tab;
-		charTimesNCache = [""];
+		charTimesNCache = [ "" ];
 	}
 	
 	public function beginObject(depth:Int) : String
@@ -37,7 +37,7 @@ class FancyStyle implements IEncodeStyle
 	
 	public function entrySeperator(depth:Int) : String
 	{
-		return "\n"+charTimesN(depth+1)+",";
+		return "\n" + charTimesN(depth + 1) + ",";
 	}
 	
 	public function keyValueSeperator(depth:Int) : String

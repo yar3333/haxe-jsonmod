@@ -24,7 +24,7 @@ class TestClass
 	public var dontSerialize = 'this wont be serialized';
     public var aDate : Date;
     public var timestamp : Float;
-
+	
 	public function new()
 	{
 		subObj = new ChildClass();
@@ -56,25 +56,25 @@ class TestParser extends haxe.unit.TestCase
 	{
 		var res = Json.parse("{key:'value'}");
 		assertEquals('value', res.key);
-
+		
 		var res = Json.parse("[]");
 		assertTrue(Std.is(res, Array));
 		assertEquals(0, res.length);
-
+		
 		var res = Json.parse("123");
 		assertEquals(123, res);
-
+		
 		var res = Json.parse("123.4");
 		assertEquals(123.4, res);
-
+		
 		var res = Json.parse('"123.4"');
 		assertEquals("123.4", res);
-
+		
 		var res = Json.parse("true");
 		assertEquals(true, res);
 		var res = Json.parse("false");
 		assertEquals(false, res);
-
+		
 		var res = Json.parse("null");
 		assertEquals(null, res);
 	}
@@ -127,7 +127,7 @@ class TestParser extends haxe.unit.TestCase
 		assertEquals(false, o.falseValue);
 		assertEquals("АБВГД абвгд", o.utf);
 	}
-
+	
 	public function testEncodeObject()
 	{
 		assertEquals('{"key2":{"anotherKey":"another\\nValue"},"key":"value"}',Json.encode({key:'value', key2:{ anotherKey:"another\nValue" }}));
@@ -190,7 +190,7 @@ class TestParser extends haxe.unit.TestCase
 		assertEquals('a',Reflect.field(generatedObj,'1'));
 		assertEquals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
 	}
-
+	
 	public function testCrazyCharacters()
 	{
 		var origObj = {
@@ -200,7 +200,7 @@ class TestParser extends haxe.unit.TestCase
 		var generatedObj = Json.parse(jsonString);
 		assertEquals(origObj.str, generatedObj.str);
 	}
-
+	
     public function testUtf8Chars()
     {
       var s = '{"str":"\\u0410\\u0411\\u0412\\u0413\\u0414 \\u0430\\u0431\\u0432\\u0433\\u0434"}';
@@ -235,7 +235,7 @@ class TestParser extends haxe.unit.TestCase
     	assertEquals(-5000000000.0, o.v);
     	assertTrue(Std.is(o.v, Float));
     }
-
+	
 	public function testChars()
 	{
 		var data = File.getContent('files/chars.json');
@@ -243,7 +243,7 @@ class TestParser extends haxe.unit.TestCase
 		//just making sure it parses without errors
 		assertEquals(1, 1);
 	}
-
+	
 	public function testFullCircle2()
 	{
 		var test = Json.parse('{
@@ -260,10 +260,10 @@ class TestParser extends haxe.unit.TestCase
 		var string1 = Json.encode(test);
 		var data = Json.parse(string1);
 		var string2 = Json.encode(data);
-
+		
 		assertEquals(string1, string2);
 	}
-
+	
 	public function testNull()
 	{
 		var obj = { "nullVal":null ,'non-null':'null',"array":[null, 1]};
@@ -274,19 +274,17 @@ class TestParser extends haxe.unit.TestCase
 		var data2 = Json.encode(obj2);
 		assertEquals('{"non-null":"null","nullVal":null,"array":[null,1]}', data2);
 	}
-
+	
 	public function testClassObject()
 	{
 		var obj = new TestClass();
 		obj.setPriv("this works");
-
+		
 		//serialize class object
 		var json = Json.encode(obj);
 		// trace(json);
 		//unserialize class object
-		var t = new TestClass();
-		t.dontSerialize = null;
-		var ob2 = Json.parseTyped(json, t);
+		var ob2 = Json.parseTyped(json, TestClass);
 		
 		assertEquals("yep", ob2.test());
 		assertEquals(obj.getPriv(), ob2.getPriv());
@@ -295,7 +293,7 @@ class TestParser extends haxe.unit.TestCase
 		obj.setPriv('newString');
 		assertFalse(obj.getPriv() == ob2.getPriv());
 		assertEquals("this works", obj.subObj.myvar);
-
+		
         //test Date object serialization/unserialization
         assertTrue(ob2.aDate != null);
         assertEquals(Std.is(ob2.aDate, Date), true);
