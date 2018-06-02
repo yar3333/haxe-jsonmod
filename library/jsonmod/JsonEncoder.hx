@@ -48,7 +48,13 @@ class JsonEncoder
 
 	function encodeObject(obj:Dynamic, style:IEncodeStyle, depth:Int) : String
 	{
-		if (references.indexOf(obj) >= 0) throw "JsonEncoder: recursive reference detected.";
+		if (references.indexOf(obj) >= 0)
+		{
+			throw "JsonEncoder: recursive reference detected:\n\t" + references.concat([obj]).map(function(x) {
+				var klass = Type.getClass(x);
+				return klass == null ? "object" : Type.getClassName(klass);
+			}).join("\n\t"); 
+		}
 		
 		references.push(obj);
 		
@@ -166,7 +172,7 @@ class JsonEncoder
 		
 		var r = Reflect.fields(obj);
 		
-		if (klass != null)
+		while (klass != null)
 		{
 			var fieldsMeta = Meta.getFields(klass);
 			for (fieldName in Reflect.fields(fieldsMeta))
@@ -176,6 +182,7 @@ class JsonEncoder
 					r.remove(fieldName);
 				}
 			}
+			klass = Type.getSuperClass(klass);
 		}
 		
 		return r;

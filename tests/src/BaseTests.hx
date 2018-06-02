@@ -2,7 +2,7 @@ import jsonmod.Json;
 import sys.io.File;
 
 @:rtti
-class ChildClass
+class NestedClass
 {
 	public var myvar : String;
 	
@@ -18,16 +18,17 @@ class TestClass
 	var priv = 'this is private';
 	
 	public var pub = 'this is public';
-	public var subObj : ChildClass;
+	public var subObj : NestedClass;
 	public var list : Array<String>;
 	@jsonIgnore
 	public var dontSerialize = 'this wont be serialized';
     public var aDate : Date;
     public var timestamp : Float;
+	public var varProp(default, null) : String = "this is varProp";
 	
 	public function new()
 	{
-		subObj = new ChildClass();
+		subObj = new NestedClass();
 		list = new Array();
         aDate = Date.now();
         timestamp = aDate.getTime();
@@ -50,7 +51,7 @@ class TestClass
 	}
 }
 
-class TestParser extends haxe.unit.TestCase
+class BaseTests extends haxe.unit.TestCase
 {
 	public function testSimple()
 	{
@@ -282,7 +283,7 @@ class TestParser extends haxe.unit.TestCase
 		
 		//serialize class object
 		var json = Json.encode(obj);
-		// trace(json);
+		//trace(json);
 		//unserialize class object
 		var ob2 = Json.parseTyped(json, TestClass);
 		
