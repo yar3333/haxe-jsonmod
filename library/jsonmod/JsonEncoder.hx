@@ -20,6 +20,7 @@ class JsonEncoder
 			{
 				case EncodeStyle.Simple: encodeStyle = new SimpleStyle();
 				case EncodeStyle.Fancy: encodeStyle = new FancyStyle();
+				case EncodeStyle.Indented: encodeStyle = new IndentedStyle();
 				case EncodeStyle.Custom(customStyle): encodeStyle = customStyle;
 			}
 		}
@@ -108,10 +109,11 @@ class JsonEncoder
 	{
 		var buffer = new StringBuf();
 		
-		buffer.add(style.beginArray(depth));
+		var it = obj.iterator();
+		buffer.add(style.beginArray(depth, !it.hasNext()));
 		
 		var isFirstField = true;
-		for (value in obj)
+		for (value in it)
 		{
 			buffer.add(isFirstField ? style.firstEntry(depth) : style.entrySeperator(depth));
 			buffer.add(encodeValue(value, style, depth));
@@ -119,7 +121,7 @@ class JsonEncoder
 			isFirstField = false;
 		}
 		
-		buffer.add(style.endArray(depth));
+		buffer.add(style.endArray(depth, isFirstField));
 		
 		return buffer.toString();
 	}

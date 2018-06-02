@@ -14,12 +14,12 @@ class SimpleStyle implements IEncodeStyle
 		return "}";
 	}
 	
-	public function beginArray(depth:Int) : String
+	public function beginArray(depth:Int, empty:Bool) : String
 	{
 		return "[";
 	}
 	
-	public function endArray(depth:Int) : String
+	public function endArray(depth:Int, empty:Bool) : String
 	{
 		return "]";
 	}

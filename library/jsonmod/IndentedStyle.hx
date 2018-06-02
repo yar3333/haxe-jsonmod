@@ -1,6 +1,6 @@
 package jsonmod;
 
-class FancyStyle implements IEncodeStyle
+class IndentedStyle implements IEncodeStyle
 {
 	public var tab(default, null) : String;
 	
@@ -22,27 +22,27 @@ class FancyStyle implements IEncodeStyle
 	
 	public function beginArray(depth:Int, empty:Bool) : String
 	{
-		return "[\n";
+		return empty ? "[" : "[\n";
 	}
 	
 	public function endArray(depth:Int, empty:Bool) : String
 	{
-		return "\n" + charTimesN(depth) + "]";
+		return empty ? "]" : "\n" + charTimesN(depth) + "]";
 	}
 	
 	public function firstEntry(depth:Int) : String
 	{
-		return charTimesN(depth + 1) + ' ';
+		return charTimesN(depth + 1);
 	}
 	
 	public function entrySeperator(depth:Int) : String
 	{
-		return "\n" + charTimesN(depth + 1) + ",";
+		return ",\n" + charTimesN(depth + 1);
 	}
 	
 	public function keyValueSeperator(depth:Int) : String
 	{
-		return " : ";
+		return ": ";
 	}
 	
 	var charTimesNCache : Array<String>;
