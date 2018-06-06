@@ -4,8 +4,8 @@
   "tags": ["json","tolerant","parser","cross"],
   "description": "JSON serializer/deserializer. Support identifiers without quotes, comments, single quotes and typed parsing (like `Newtonsoft.Json` library in C#). Based on `tjson` library.",
   "contributors": ["yar3333"],
-  "releasenote": "Init.",
-  "version": "1.0.0",
+  "releasenote": "Fix @jsonIgnore with inheritance. Add `indented` style.",
+  "version": "1.1.0",
   "url": "https://bitbucket.org/yar3333/haxe-jsonmod",
   "dependencies": {}
 }
