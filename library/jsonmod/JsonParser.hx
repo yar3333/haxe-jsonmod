@@ -23,7 +23,7 @@ class JsonParser
 
     public function parse(?klass:Class<Dynamic>) : Dynamic
     {
-    	var type = klass != null ? CType.CClass(Type.getClassName(klass), new List<CType>()) : null;
+    	var type = klass != null ? CType.CClass(Type.getClassName(klass), new Array<CType>()) : null;
 		
 		try
 		{
@@ -107,7 +107,7 @@ class JsonParser
 			switch (type)
 			{
 				case CType.CClass("Array", params):
-					itemType = params.first();
+					itemType = params[0];
 					
 				default:
 					throw "Expected " + type + ", but array found.";
@@ -277,7 +277,7 @@ class JsonParser
 					
 					if (c == "u")
 					{
-                        var hexValue = 0;
+                        var hexValue : Int = 0;
 						
                         for (i in 0...4)
                         {
@@ -293,10 +293,11 @@ class JsonParser
                               hexValue += 10 + nc - 95;
                             else throw "Not a hex digit";
                         }
-                        
-						var utf = new haxe.Utf8();
-						utf.addChar(hexValue);
-						symbol += utf.toString();
+						
+						//var utf = new haxe.Utf8();
+						//utf.addChar(hexValue);
+						//symbol += utf.toString();
+						symbol += String.fromCharCode(hexValue);
                         
 						continue;
 					}
