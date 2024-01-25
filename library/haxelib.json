@@ -6,6 +6,6 @@
   "contributors": ["yar3333"],
   "releasenote": "Fix @jsonIgnore with inheritance. Add `indented` style.",
   "version": "1.1.0",
-  "url": "https://bitbucket.org/yar3333/haxe-jsonmod",
+  "url": "https://github.com/yar3333/haxe-jsonmod",
   "dependencies": {}
 }
