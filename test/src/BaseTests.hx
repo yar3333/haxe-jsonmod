@@ -1,3 +1,5 @@
+import haxe.ds.StringMap;
+import utest.Assert;
 import jsonmod.Json;
 import sys.io.File;
 
@@ -51,33 +53,50 @@ class TestClass
 	}
 }
 
-class BaseTests extends haxe.unit.TestCase
+@:rtti
+class ClassWithMap
+{
+    public var myMap = new Map<String, NestedClass>();
+
+    public function new() {}
+}
+
+@:rtti
+class ClassWithDate
+{
+    public var dt: Date;
+
+    public function new() {}
+}
+
+class BaseTests extends utest.Test
 {
 	public function testSimple()
 	{
 		var res = Json.parse("{key:'value'}");
-		assertEquals('value', res.key);
+		Assert.equals('value', res.key);
 		
 		var res = Json.parse("[]");
-		assertTrue(Std.is(res, Array));
-		assertEquals(0, res.length);
+		Assert.isOfType(res, Array);
+		Assert.equals(0, res.length);
 		
 		var res = Json.parse("123");
-		assertEquals(123, res);
+		Assert.equals(123, res);
 		
 		var res = Json.parse("123.4");
-		assertEquals(123.4, res);
+		Assert.equals(123.4, res);
 		
 		var res = Json.parse('"123.4"');
-		assertEquals("123.4", res);
+		Assert.equals("123.4", res);
 		
 		var res = Json.parse("true");
-		assertEquals(true, res);
-		var res = Json.parse("false");
-		assertEquals(false, res);
+		Assert.equals(true, res);
+		
+        var res = Json.parse("false");
+		Assert.equals(false, res);
 		
 		var res = Json.parse("null");
-		assertEquals(null, res);
+		Assert.equals(null, res);
 	}
 	
 	public function testComplex()
@@ -116,32 +135,34 @@ class BaseTests extends haxe.unit.TestCase
 			}';
 		var o = Json.parse(data);
 		//trace(Std.string(o));
-		assertEquals("value with a
+		Assert.equals("value with a
 					newline in the middle!", o.keyWithNoString.keyWithSingleQuote);
-		assertEquals(300, Reflect.field(o.keyWithNoString,'k2'));
-		assertEquals("key 3", Reflect.field(o.keyWithNoString,'key with spaces'));
-		assertEquals(-3.2, o.arrayWithNoCommaBeforeIt[1]);
-		assertEquals(1.0, o.arrayWithNoCommaBeforeIt[0]);
-		assertEquals(0.45, o.arrayWithNoCommaBeforeIt[3]);
-		assertEquals("aValue2", o.arrayWithObj[1].key2);
-		assertEquals(true, o.boolValue);
-		assertEquals(false, o.falseValue);
-		assertEquals("АБВГД абвгд", o.utf);
+		Assert.equals(300, Reflect.field(o.keyWithNoString,'k2'));
+		Assert.equals("key 3", Reflect.field(o.keyWithNoString,'key with spaces'));
+		Assert.equals(-3.2, o.arrayWithNoCommaBeforeIt[1]);
+		Assert.equals(1.0, o.arrayWithNoCommaBeforeIt[0]);
+		Assert.equals(0.45, o.arrayWithNoCommaBeforeIt[3]);
+		Assert.equals("aValue2", o.arrayWithObj[1].key2);
+		Assert.equals(true, o.boolValue);
+		Assert.equals(false, o.falseValue);
+		Assert.equals("АБВГД абвгд", o.utf);
 	}
 	
 	public function testEncodeObject()
 	{
-		assertEquals('{"key2":{"anotherKey":"another\\nValue"},"key":"value"}',Json.encode({key:'value', key2:{ anotherKey:"another\nValue" }}));
+		var case0 = '{"key":"value","key2":{"anotherKey":"another\\nValue"}}';
+		var case1 = '{"key2":{"anotherKey":"another\\nValue"},"key":"value"}';
+        Assert.allows([case0, case1], Json.encode({key:'value', key2:{ anotherKey:"another\nValue" }}));
 	}
 	
 	public function testEncodeArray()
 	{
-		assertEquals('[1,2,3,4,[10,10,{"myKey":"My\\nValue"}]]', Json.encode([1, 2, 3, 4,[10, 10,{ myKey:"My\nValue" }]]));
+		Assert.equals('[1,2,3,4,[10,10,{"myKey":"My\\nValue"}]]', Json.encode([1, 2, 3, 4,[10, 10,{ myKey:"My\nValue" }]]));
 	}
 	
 	public function testEncodeMap()
 	{
-		assertEquals('{"key":{"newKey":"value"},"key2":{"anotherKey":"another\\nValue"}}',
+		Assert.equals('{"key":{"newKey":"value"},"key2":{"anotherKey":"another\\nValue"}}',
 		    Json.encode([ "key" => [ "newKey" => "value" ], "key2" => [ "anotherKey" => "another\nValue" ] ]));
 	}
 	
@@ -156,7 +177,7 @@ class BaseTests extends haxe.unit.TestCase
 		sublist.push("two");
 		sublist.push(new Array<Dynamic>());
 		list.push(sublist);
-		assertEquals('["test",{"key":"myObject","intval":31},[1,2,3,4],[1,"two",[]]]', Json.encode(list));
+		Assert.equals('["test",{"key":"myObject","intval":31},[1,2,3,4],[1,"two",[]]]', Json.encode(list));
 	}
 	
 	public function testFullCircleObject()
@@ -181,15 +202,15 @@ class BaseTests extends haxe.unit.TestCase
 		//test simple style
 		var jsonString = Json.encode(origObj);
 		var generatedObj = Json.parse(jsonString);
-		assertEquals('a',Reflect.field(generatedObj,'1'));
+		Assert.equals('a',Reflect.field(generatedObj,'1'));
 
-		assertEquals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
+		Assert.equals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
 
 		//test fancy style
 		var jsonString = Json.encode(origObj, JsonEncodeStyle.Fancy);
 		var generatedObj = Json.parse(jsonString);
-		assertEquals('a',Reflect.field(generatedObj,'1'));
-		assertEquals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
+		Assert.equals('a',Reflect.field(generatedObj,'1'));
+		Assert.equals('anotherValue',Reflect.field(Reflect.field(generatedObj,'anArray')[0],'anotherKey'));
 	}
 	
 	public function testCrazyCharacters()
@@ -199,42 +220,42 @@ class BaseTests extends haxe.unit.TestCase
 		}
 		var jsonString = Json.encode(origObj);
 		var generatedObj = Json.parse(jsonString);
-		assertEquals(origObj.str, generatedObj.str);
+		Assert.equals(origObj.str, generatedObj.str);
 	}
 	
     public function testUtf8Chars()
     {
       var s = '{"str":"\\u0410\\u0411\\u0412\\u0413\\u0414 \\u0430\\u0431\\u0432\\u0433\\u0434"}';
       var o = Json.parse(s);
-      assertEquals(o.str, "АБВГД абвгд");
+      Assert.equals(o.str, "АБВГД абвгд");
     }
 	
     public function testInt()
     {
     	var intStr = "{v:500}";
     	var o = Json.parse(intStr);
-    	assertEquals(500, o.v);
-    	assertTrue(Std.is(o.v, Int));
+    	Assert.equals(500, o.v);
+    	Assert.isOfType(o.v, Int);
 		
     	var intStr = "{v:2147483647}";
     	var o = Json.parse(intStr);
-    	assertEquals(2147483647, o.v);
-    	assertTrue(Std.is(o.v, Int));
+    	Assert.equals(2147483647, o.v);
+    	Assert.isOfType(o.v, Int);
 		
     	var intStr = "{v:-2147483648}";
     	var o = Json.parse(intStr);
-    	assertEquals(-2147483648, o.v);
-    	assertTrue(Std.is(o.v, Int));
+    	Assert.equals(-2147483648, o.v);
+    	Assert.isOfType(o.v, Int);
 		
     	var intStr = "{v:5000000000}";
     	var o = Json.parse(intStr);
-    	assertEquals(5000000000.0, o.v);
-    	assertTrue(Std.is(o.v, Float));
+    	Assert.equals(5000000000.0, o.v);
+    	Assert.isOfType(o.v, Float);
 		
     	var intStr = "{v:-5000000000}";
     	var o = Json.parse(intStr);
-    	assertEquals(-5000000000.0, o.v);
-    	assertTrue(Std.is(o.v, Float));
+    	Assert.equals(-5000000000.0, o.v);
+    	Assert.isOfType(o.v, Float);
     }
 	
 	public function testChars()
@@ -242,7 +263,7 @@ class BaseTests extends haxe.unit.TestCase
 		var data = File.getContent('files/chars.json');
 		var d = Json.parse(data);
 		//just making sure it parses without errors
-		assertEquals(1, 1);
+		Assert.equals(1, 1);
 	}
 	
 	public function testFullCircle2()
@@ -262,18 +283,18 @@ class BaseTests extends haxe.unit.TestCase
 		var data = Json.parse(string1);
 		var string2 = Json.encode(data);
 		
-		assertEquals(string1, string2);
+		Assert.equals(string1, string2);
 	}
 	
 	public function testNull()
 	{
-		var obj = { "nullVal":null ,'non-null':'null',"array":[null, 1]};
+		var obj = { "nullVal":null, 'non-null':'null', "array":[null, 1]};
 		var data = Json.encode(obj);
-		assertEquals('{"non-null":"null","nullVal":null,"array":[null,1]}', data);
+		Assert.allows(['{"nullVal":null,"non-null":"null","array":[null,1]}', "{\"non-null\":\"null\",\"nullVal\":null,\"array\":[null,1]}"], data);
 		
 		var obj2 = Json.parse('{"nullVal":null ,"non-null":"null","array":[null,1]}');
 		var data2 = Json.encode(obj2);
-		assertEquals('{"non-null":"null","nullVal":null,"array":[null,1]}', data2);
+		Assert.allows(['{"nullVal":null,"non-null":"null","array":[null,1]}', "{\"non-null\":\"null\",\"nullVal\":null,\"array\":[null,1]}"], data2);
 	}
 	
 	public function testClassObject()
@@ -287,22 +308,49 @@ class BaseTests extends haxe.unit.TestCase
 		//unserialize class object
 		var ob2 = Json.parseTyped(json, TestClass);
 		
-		assertEquals("yep", ob2.test());
-		assertEquals(obj.getPriv(), ob2.getPriv());
+		Assert.equals("yep", ob2.test());
+		Assert.equals(obj.getPriv(), ob2.getPriv());
 		
 		//confirm that they are seperate instances
 		obj.setPriv('newString');
-		assertFalse(obj.getPriv() == ob2.getPriv());
-		assertEquals("this works", obj.subObj.myvar);
+		Assert.isFalse(obj.getPriv() == ob2.getPriv());
+		Assert.equals("this works", obj.subObj.myvar);
 		
         //test Date object serialization/unserialization
-        assertTrue(ob2.aDate != null);
-        assertEquals(Std.is(ob2.aDate, Date), true);
-        assertEquals(ob2.timestamp, obj.timestamp);
-        assertEquals(ob2.aDate.getTime(), obj.timestamp);
+        Assert.isTrue(ob2.aDate != null);
+        Assert.isOfType(ob2.aDate, Date);
+        Assert.equals(ob2.timestamp, obj.timestamp);
+        Assert.equals(ob2.aDate.getTime(), obj.timestamp);
         
         //test TJ_noEncode
-        assertEquals("this wont be serialized", obj.dontSerialize);
-        assertEquals(null, ob2.dontSerialize);
+        Assert.equals("this wont be serialized", obj.dontSerialize);
+        Assert.equals(null, ob2.dontSerialize);
 	}
+
+    public function testMap()
+    {
+        var obj = new ClassWithMap();
+        obj.myMap.set("myKey", new NestedClass());
+
+        var encoded = Json.encode(obj);
+        Assert.equals("{\"myMap\":{\"myKey\":{\"myvar\":\"this works\"}}}", encoded);
+
+        var decoded = Json.parseTyped(encoded, ClassWithMap);
+        Assert.isOfType(decoded, ClassWithMap);
+        Assert.isOfType(decoded.myMap, StringMap);
+        Assert.isOfType(decoded.myMap.get("myKey"), NestedClass);
+    }
+
+    public function testDate()
+    {
+        var obj = new ClassWithDate();
+        obj.dt = new Date(2000, 0, 1, 0, 0, 0);
+        var encoded = Json.encode(obj);
+
+        var decoded = Json.parseTyped(encoded, ClassWithDate);
+        Assert.isOfType(decoded, ClassWithDate);
+        Assert.isOfType(decoded.dt, Date);
+
+        Assert.equals(decoded.dt.getTime(), new Date(2000, 0, 1, 0, 0, 0).getTime());
+    }
 }

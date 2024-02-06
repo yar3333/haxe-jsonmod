@@ -1,0 +1,21 @@
+--library utest
+--class-path library
+--class-path test\src
+--main Main
+
+--each
+--library hxnodejs
+-w -WDeprecatedEnumAbstract
+--js test\bin\index.js
+--cmd echo ============= js
+--cmd cmd /c "cd test\bin & node index.js"
+
+--next
+--neko test\bin\index.n
+--cmd echo ============= neko
+--cmd cmd /c "cd test\bin & neko index.n"
+
+--next
+--php test\bin\php
+--cmd echo ============= php
+--cmd cmd /c "cd test\bin & php php\index.php"

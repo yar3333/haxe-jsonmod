@@ -10,10 +10,10 @@ class Json
 		return t.parse();
 	}
 	
-	public static function parseTyped<T>(json:String, klass:Class<T>) : T
+	public static function parseTyped<T>(json:String, klassWithRttiMeta:Class<T>) : T
 	{
         var t = new JsonParser(json);
-		return t.parse(klass);
+		return t.parse(klassWithRttiMeta);
 	}
 	
 	public static function encode(obj:Dynamic, ?style:JsonEncodeStyle) : String

@@ -1,3 +1,4 @@
+import utest.Assert;
 import jsonmod.Json;
 
 @:rtti
@@ -20,7 +21,7 @@ class ChildClass extends BaseClass
 	public var varD = "d";
 }
 
-class ExtTests extends haxe.unit.TestCase
+class ExtTests extends utest.Test
 {
 	public function testSimple()
 	{
@@ -28,10 +29,10 @@ class ExtTests extends haxe.unit.TestCase
 		var s = Json.encode(obj);
 		var obj2 = Json.parseTyped(s, ChildClass);
 		
-		assertTrue(Std.is(obj2, ChildClass));
-		assertEquals(null, obj2.varD);
-		assertEquals(null, obj2.varB);
-		assertEquals("a", obj2.varA);
-		assertEquals("c", obj2.varC);
+		Assert.isOfType(obj2, ChildClass);
+		Assert.equals(null, obj2.varD);
+		Assert.equals(null, obj2.varB);
+		Assert.equals("a", obj2.varA);
+		Assert.equals("c", obj2.varC);
 	}
 }

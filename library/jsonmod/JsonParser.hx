@@ -1,9 +1,10 @@
 package jsonmod;
 
-import haxe.rtti.Meta;
+import haxe.Exception;
 import haxe.rtti.Rtti;
 import haxe.rtti.CType;
 using StringTools;
+using Lambda;
 
 class JsonParser
 {
@@ -21,9 +22,9 @@ class JsonParser
 		this.json = json;
     }
 
-    public function parse(?klass:Class<Dynamic>) : Dynamic
+    public function parse(?klassWithRttiMeta:Class<Dynamic>) : Dynamic
     {
-    	var type = klass != null ? CType.CClass(Type.getClassName(klass), new Array<CType>()) : null;
+    	var type = klassWithRttiMeta != null ? CType.CClass(Type.getClassName(klassWithRttiMeta), new Array<CType>()) : null;
 		
 		try
 		{
@@ -44,16 +45,30 @@ class JsonParser
 	{
 		var o : Dynamic;
 		var rtti : Classdef = null;
+        var mapValueType: CType = null;
+        var dynamicType: CType = null;
 		
 		if (type != null)
 		{
 			switch (type)
 			{
-				case CType.CClass(name, params):
+				case CType.CClass(name, params) if (name != "haxe.ds.Map"):
 					var klass = Type.resolveClass(name);
 					if (klass == null) throw "Can't resolve class '" + name + "'.";
 					o = Type.createEmptyInstance(klass);
 					rtti = Rtti.getRtti(klass);
+
+                case CType.CClass(name, params) if (name == "haxe.ds.Map" && params != null && params.length == 2):
+                    if (!params[0].match(CClass("String", []))) throw "Map with a String key is only supported (found '" + params[0] + "').";
+                    mapValueType = params[1];
+                    o = new Map<String, Dynamic>();
+
+                case CType.CAbstract(name, params):
+                    return parseObject(CType.CClass(name, params));
+
+                case CType.CDynamic(t):
+                    o = {};
+                    dynamicType = t;
 					
 				default:
 					throw "Expected " + type + ", but object found.";
@@ -82,17 +97,19 @@ class JsonParser
 			
 			if (v == "{" && !lastSymbolQuoted)
 			{
-				val = parseObject(getFieldType(rtti, key));
+				val = parseObject(dynamicType ?? mapValueType ?? getFieldType(rtti, key));
 			}
 			else if (v == "[" && !lastSymbolQuoted)
 			{
-				val = parseArray(getFieldType(rtti, key));
+				val = parseArray(dynamicType ?? mapValueType ?? getFieldType(rtti, key));
 			}
 			else
 			{
-				val = convertSymbolToProperType(v, getFieldType(rtti, key));
+				val = convertSymbolToProperType(v, dynamicType ?? mapValueType ?? getFieldType(rtti, key));
 			}
-			Reflect.setField(o, key, val);
+
+            if (mapValueType == null) Reflect.setField(o, key, val);
+            else (cast o : Map<String, Dynamic>).set(key, val);
 		}
 		throw "Unexpected end of file. Expected '}'";
 	}
@@ -147,27 +164,20 @@ class JsonParser
 	{
 		if (lastSymbolQuoted)
 		{
-			return symbol;
+			if (type == null) return symbol;
+            return switch (type) { case CType.CClass("Date", _): parseDate(symbol); case _: symbol; };
 		}
 		if (looksLikeFloat(symbol))
 		{
 			var f = Std.parseFloat(symbol);
 			if (type == null) return f;
-			switch (type)
-			{
-				case CType.CClass("Date", _): return Date.fromTime(f);
-				default: return f;
-			}
+			return switch (type) { case CType.CClass("Date", _): Date.fromTime(f); case _: f; };
 		}
 		if (looksLikeInt(symbol))
 		{
 			var n = Std.parseInt(symbol);
 			if (type == null) return n;
-			switch (type)
-			{
-				case CType.CClass("Date", _): return Date.fromTime(n);
-				default: return n;
-			}
+			return switch (type) { case CType.CClass("Date", _): Date.fromTime(n); case _: n; }
 		}
 		if (symbol.toLowerCase() == "true")
 		{
@@ -290,14 +300,17 @@ class JsonParser
                             else if (nc >= 65 && nc <= 70)// A..F
                               hexValue += 10 + nc - 65;
                             else if (nc >= 97 && nc <= 102)// a..f
-                              hexValue += 10 + nc - 95;
+                              hexValue += 10 + nc - 97;
                             else throw "Not a hex digit";
                         }
 						
-						//var utf = new haxe.Utf8();
-						//utf.addChar(hexValue);
-						//symbol += utf.toString();
+                        #if target.unicode
 						symbol += String.fromCharCode(hexValue);
+                        #else
+                        var temp = new neko.Utf8();
+                        temp.addChar(hexValue);
+                        symbol += temp.toString();
+                        #end
                         
 						continue;
 					}
@@ -394,11 +407,53 @@ class JsonParser
 	
 	function getFieldType(rtti:Classdef, field:String) : CType
 	{
-		if (rtti == null) return null;
-		for (x in rtti.fields)
-		{
-			if (x.name == field) return x.type;
-		}
-		return null;
+		return rtti?.fields.find(x -> x.name == field)?.type;
 	}
+
+    static function parseDate(s:String) : Date
+    {
+        var reDate = ~/(\d{4})-(\d+)-(\d+)[ T](\d+):(\d+):(\d+(?:\.\d+)?)(Z|z|[-+]\d+:\d+)/;
+        
+        if (!reDate.match(s)) throw new Exception("Date format must be ISO (found: '" + s + "').");
+
+        var secFloat = Std.parseFloat(reDate.matched(6));
+
+        #if (js || flash || php || cpp || python)
+        var f = DateTools.makeUtc
+        (
+            Std.parseInt(reDate.matched(1)), 
+            Std.parseInt(reDate.matched(2)) - 1,
+            Std.parseInt(reDate.matched(3)),
+            Std.parseInt(reDate.matched(4)),
+            Std.parseInt(reDate.matched(5)),
+            Std.int(secFloat),
+        );
+        #else
+        var tempDt = new Date
+        (
+            Std.parseInt(reDate.matched(1)), 
+            Std.parseInt(reDate.matched(2)) - 1,
+            Std.parseInt(reDate.matched(3)),
+            Std.parseInt(reDate.matched(4)),
+            Std.parseInt(reDate.matched(5)),
+            Std.int(secFloat),
+        );
+        var f = tempDt.getTime() - tempDt.getTimezoneOffset() * 60000;
+        #end
+        f += Std.int(Math.round((secFloat - Std.int(secFloat)) * 1000));
+
+        if (reDate.matched(7).startsWith("+"))
+        {
+            var hm = reDate.matched(7).substring(1).split(":");
+            f -= Std.parseInt(hm[0]) * 3600000 + Std.parseInt(hm[1]) * 60000;
+        }
+        else
+        if (reDate.matched(7).startsWith("-"))
+        {
+            var hm = reDate.matched(7).substring(1).split(":");
+            f += Std.parseInt(hm[0]) * 3600000 + Std.parseInt(hm[1]) * 60000;
+        }
+
+        return Date.fromTime(f);
+    }
 }

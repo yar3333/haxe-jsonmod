@@ -31,11 +31,11 @@ class JsonEncoder
 		
 		var buffer = new StringBuf();
 		
-		if (Std.is(obj, Array) || Std.is(obj, List))
+		if (Std.isOfType(obj, Array) || Std.isOfType(obj, List))
 		{
 			buffer.add(encodeIterable(obj, encodeStyle, 0));
 		}
-		else if (Std.is(obj, haxe.ds.StringMap))
+		else if (Std.isOfType(obj, haxe.ds.StringMap))
 		{
 			buffer.add(encodeMap(obj, encodeStyle, 0));
 		}
@@ -128,30 +128,39 @@ class JsonEncoder
 	
 	function encodeValue(value:Dynamic, style:IEncodeStyle, depth:Int) : String
 	{
-		if (Std.is(value, Int) || Std.is(value, Float))
+		if (Std.isOfType(value, Int) || Std.isOfType(value, Float))
 		{
 			return value;
 		}
-		else if (Std.is(value, Array) || Std.is(value, List))
+		else if (Std.isOfType(value, Array) || Std.isOfType(value, List))
 		{
 			var v : Iterable<Dynamic> = value;
 			return encodeIterable(v, style, depth + 1);
 		}
-		else if (Std.is(value, haxe.ds.StringMap))
+		else if (Std.isOfType(value, haxe.ds.StringMap))
 		{
 			return encodeMap(value, style, depth + 1);
 		}
-		else if (Std.is(value, String))
+		else if (Std.isOfType(value, String))
 		{
 			return '"' + Std.string(value).replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace('"', '\\"') + '"';
 		}
-		else if (Std.is(value, Bool))
+		else if (Std.isOfType(value, Bool))
 		{
 			return value;
 		}
-		else if (Std.is(value, Date))
+		else if (Std.isOfType(value, Date))
 		{
-			return value.getTime();
+			var dt = (cast value : Date);
+            var ms = dt.getTime() % 1000;
+            return '"' + dt.getUTCFullYear()
+                + "-" + Std.string(dt.getUTCMonth() + 1).lpad("0", 2)
+                + "-" + Std.string(dt.getUTCDate()).lpad("0", 2)
+                + "T" + Std.string(dt.getUTCHours()).lpad("0", 2)
+                + ":" + Std.string(dt.getUTCMinutes()).lpad("0", 2)
+                + ":" + Std.string(dt.getUTCSeconds()).lpad("0", 2)
+                + (ms != 0 ? "." + Std.string(ms).lpad("0", 3) : "")
+                + "Z\"";
 		}
 		else if (Reflect.isObject(value))
 		{
