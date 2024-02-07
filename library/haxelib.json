@@ -4,8 +4,8 @@
   "tags": ["json","tolerant","parser","cross"],
   "description": "JSON serializer/deserializer. Support identifiers without quotes, comments, single quotes and typed parsing (like `Newtonsoft.Json` library in C#). Based on `tjson` library.",
   "contributors": ["yar3333"],
-  "releasenote": "haxe-4",
-  "version": "1.1.1",
+  "releasenote": "Serialize Date to ISO string. Support enums, Map<String, T> and Dynamic<T>.",
+  "version": "1.2.0",
   "url": "https://github.com/yar3333/haxe-jsonmod",
   "dependencies": {}
 }
