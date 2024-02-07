@@ -166,6 +166,10 @@ class JsonEncoder
 		{
 			return encodeObject(value, style, depth + 1);
 		}
+        else if (Reflect.isEnumValue(value))
+        {
+            return '"' + (cast value : EnumValue).getName() + '"';
+        }
 		else if (value == null)
 		{
 			return "null";

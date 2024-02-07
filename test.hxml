@@ -4,6 +4,9 @@
 --main Main
 
 --each
+--interp
+
+--next
 --library hxnodejs
 -w -WDeprecatedEnumAbstract
 --js test\bin\index.js

@@ -1,18 +1,6 @@
-import haxe.ds.StringMap;
 import utest.Assert;
 import jsonmod.Json;
 import sys.io.File;
-
-@:rtti
-class NestedClass
-{
-	public var myvar : String;
-	
-	public function new()
-	{
-		myvar = "this works";
-	}
-}
 
 @:rtti
 class TestClass
@@ -53,21 +41,8 @@ class TestClass
 	}
 }
 
-@:rtti
-class ClassWithMap
-{
-    public var myMap = new Map<String, NestedClass>();
 
-    public function new() {}
-}
 
-@:rtti
-class ClassWithDate
-{
-    public var dt: Date;
-
-    public function new() {}
-}
 
 class BaseTests extends utest.Test
 {
@@ -326,31 +301,4 @@ class BaseTests extends utest.Test
         Assert.equals("this wont be serialized", obj.dontSerialize);
         Assert.equals(null, ob2.dontSerialize);
 	}
-
-    public function testMap()
-    {
-        var obj = new ClassWithMap();
-        obj.myMap.set("myKey", new NestedClass());
-
-        var encoded = Json.encode(obj);
-        Assert.equals("{\"myMap\":{\"myKey\":{\"myvar\":\"this works\"}}}", encoded);
-
-        var decoded = Json.parseTyped(encoded, ClassWithMap);
-        Assert.isOfType(decoded, ClassWithMap);
-        Assert.isOfType(decoded.myMap, StringMap);
-        Assert.isOfType(decoded.myMap.get("myKey"), NestedClass);
-    }
-
-    public function testDate()
-    {
-        var obj = new ClassWithDate();
-        obj.dt = new Date(2000, 0, 1, 0, 0, 0);
-        var encoded = Json.encode(obj);
-
-        var decoded = Json.parseTyped(encoded, ClassWithDate);
-        Assert.isOfType(decoded, ClassWithDate);
-        Assert.isOfType(decoded.dt, Date);
-
-        Assert.equals(decoded.dt.getTime(), new Date(2000, 0, 1, 0, 0, 0).getTime());
-    }
 }

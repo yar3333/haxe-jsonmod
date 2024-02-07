@@ -1,5 +1,6 @@
 package jsonmod;
 
+import haxe.EnumTools;
 import haxe.Exception;
 import haxe.rtti.Rtti;
 import haxe.rtti.CType;
@@ -165,7 +166,12 @@ class JsonParser
 		if (lastSymbolQuoted)
 		{
 			if (type == null) return symbol;
-            return switch (type) { case CType.CClass("Date", _): parseDate(symbol); case _: symbol; };
+            return switch (type)
+            { 
+                case CType.CClass("Date", _): parseDate(symbol); 
+                case CEnum(name, params): EnumTools.createByName(Type.resolveEnum(name), symbol);
+                case _: symbol; 
+            };
 		}
 		if (looksLikeFloat(symbol))
 		{
